@@ -21,26 +21,26 @@ myControl <- trainControl(method='cv', number=folds, repeats=repeats,
                           index=createMultiFolds(trainData$comp_damage_houses, k=folds, times=repeats))
 PP <- c('center', 'scale')
 
-cl <- makeCluster(3, type = "SOCK")
+cl <- makeCluster(10, type = "SOCK")
 
 registerDoSNOW(cl)
 
 #Train some models
-all.models <- caretList(trainData[-1], trainData$comp_damage_houses, trControl=myControl, tuneList=list(
-  model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=500, .interaction.depth=15, .shrinkage = 0.01, .n.minobsinnode = c(10))),
-  model2 <- caretModelSpec( method='blackboost'),
-  model3 <- caretModelSpec( method='parRF'),
-  model5 <- caretModelSpec( method='knn', preProcess=PP),
-  model6 <- caretModelSpec( method='earth', preProcess=PP),
-  model7 <- caretModelSpec( method='glm',  preProcess=PP),
-  model8 <- caretModelSpec( method='svmRadial', preProcess=PP),
-  model9 <- caretModelSpec( method='gam', preProcess=PP),
-  model10 <- caretModelSpec( method='glmnet', preProcess=PP)
+all.models <- caretList(trainData[-1], trainData$comp_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
+  model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=300, .interaction.depth=2, .shrinkage = 0.01, .n.minobsinnode = c(10)))
+  # model2 <- caretModelSpec( method='blackboost')#,
+  # model3 <- caretModelSpec( method='parRF'),
+  # model5 <- caretModelSpec( method='knn', preProcess=PP),
+  # model6 <- caretModelSpec( method='earth', preProcess=PP),
+  #model7 <- caretModelSpec( method='glm',  preProcess=PP),
+  # model8 <- caretModelSpec( method='svmRadial', preProcess=PP),
+  # model9 <- caretModelSpec( method='gam', preProcess=PP),
+  # model10 <- caretModelSpec( method='glmnet', preProcess=PP)
 ))
 
 #Make a list of all the models
 names(all.models) <- sapply(all.models, function(x) x$method)
-sort(sapply(all.models, function(x) min(x$results$ROC)))
+sort(sapply(all.models, function(x) min(x$results$Rsquared)))
 
 #Make a greedy ensemble - currently can only use RMSE
 greedy <- caretEnsemble(all.models, iter=1000L)
@@ -53,6 +53,4 @@ linear$error
 
 
 stopCluster(cl)
-
-plot(model)
 
