@@ -24,7 +24,7 @@ df_test<- df_test[,c(6,8:38)]
 df_train<- df_train[,c(6,8:38)]
 
 folds=10
-repeats=2
+repeats=10
 myControl <- trainControl(method='cv', number=folds, repeats=repeats, 
                           returnResamp='final',
                           savePredictions=TRUE, 
@@ -44,6 +44,7 @@ all.models <- caretList(df_train[-1], df_train$part_damage_houses,metric = "Rsqu
   model5 <- caretModelSpec( method='knn', preProcess=PP),
   model6 <- caretModelSpec( method='earth', preProcess=PP),
   model7 <- caretModelSpec( method='glm',  preProcess=PP),
+  model8 <- caretModelSpec( method='nnet',  preProcess=PP),
   model10 <- caretModelSpec( method='glmnet', preProcess=PP)
 ))
 
@@ -55,7 +56,7 @@ greedy_ensemble <- caretEnsemble(
   all.models, 
   metric="Rsquared",
   trControl=trainControl(
-    number=2,
+    number=10,
     classProbs = F
   ))
 summary(greedy_ensemble)

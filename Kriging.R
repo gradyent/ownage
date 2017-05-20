@@ -8,6 +8,7 @@ df_typhoon <- dplyr::select(df_typhoon, -x_pos, -y_pos, -typhoon_name, -admin_L3
 
 library(glmmLasso); library(dplyr)
 library(MASS);library(nlme);library(DiceKriging)
+library(doSNOW)
 
 test_typhoon <- as.character(unique(df_typhoon$typhoon_name)[1])
 df_typhoon[,5:36]<-scale(df_typhoon[,5:36],center=T,scale=T)
