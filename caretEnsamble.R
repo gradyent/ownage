@@ -4,6 +4,7 @@ rm(list=ls())
 library(caret)
 library(caretEnsemble)
 library(doSNOW)
+library(dplyr)
 
 df_tycoon <- read.csv("Data//1. Modelling challenge//trainingset.csv")
 df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
@@ -16,42 +17,35 @@ df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
 df_test<- df_test[,c(5,8:38)]
 df_train<- df_train[,c(5,8:38)]
 
-
-
 folds=5
 repeats=1
 myControl <- trainControl(method='cv', number=folds, repeats=repeats, 
-                          returnResamp='none',
+                          returnResamp='final',
                           savePredictions=TRUE, 
                           verboseIter=TRUE,
                           index=createMultiFolds(df_train$comp_damage_houses, k=folds, times=repeats))
 PP <- c('center', 'scale')
 
-cl <- makeCluster(10, type = "SOCK")
+cl <- makeCluster(16, type = "SOCK")
 
 registerDoSNOW(cl)
 
 #Train some models
 all.models <- caretList(df_train[-1], df_train$comp_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
-  model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=300, .interaction.depth=2, .shrinkage = 0.01, .n.minobsinnode = c(10)))
-  # model2 <- caretModelSpec( method='blackboost')#,
-  # model3 <- caretModelSpec( method='parRF'),
-  # model5 <- caretModelSpec( method='knn', preProcess=PP),
-  # model6 <- caretModelSpec( method='earth', preProcess=PP),
-  #model7 <- caretModelSpec( method='glm',  preProcess=PP),
-  # model8 <- caretModelSpec( method='svmRadial', preProcess=PP),
-  # model9 <- caretModelSpec( method='gam', preProcess=PP),
-  # model10 <- caretModelSpec( method='glmnet', preProcess=PP)
+  model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=300, .interaction.depth=2, .shrinkage = 0.01, .n.minobsinnode = c(10))),
+  model2 <- caretModelSpec( method='blackboost'),
+  model3 <- caretModelSpec( method='parRF'),
+  model5 <- caretModelSpec( method='knn', preProcess=PP),
+  model6 <- caretModelSpec( method='earth', preProcess=PP),
+  model7 <- caretModelSpec( method='glm',  preProcess=PP),
+  model8 <- caretModelSpec( method='svmRadial', preProcess=PP),
+ # model9 <- caretModelSpec( method='gam', preProcess=PP)
+  model10 <- caretModelSpec( method='glmnet', preProcess=PP)
 ))
 
 #Make a list of all the models
 names(all.models) <- sapply(all.models, function(x) x$method)
 sort(sapply(all.models, function(x) min(x$results$Rsquared)))
-
-
-#Make a linear regression ensemble
-linear <- caretStack(all.models, method='glm', trControl=trainControl(method='cv'))
-linear$error
 
 
 stopCluster(cl)
