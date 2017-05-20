@@ -18,10 +18,10 @@ scars <- as.data.frame(scaleList)
 library(glmmLasso); library(dplyr)
 library(MASS);library(nlme)
 
-test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
+# test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
 df_tycoon[,5:36]<-scale(df_tycoon[,5:36],center=T,scale=T)
-df_train <- filter(df_tycoon, !typhoon_name==test_tycoon)
-df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
+df_train <- df_tycoon
+# df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
 
 ### Model for completely destroyed:
 df_train_comp <- select(df_train, -admin_L3_name, -part_damage_houses, -total_damage_houses)
