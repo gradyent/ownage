@@ -20,10 +20,10 @@ df_train<- df_train[,c(5,8:38)]
 
 
 fitControl <- trainControl(method = "cv",
-                           number = 5
+                           number = 40
 )
 
-Grid <- expand.grid( n.trees = seq(10,300,20), interaction.depth = c(2), shrinkage = seq(0.1), n.minobsinnode = seq(10,10,10))
+Grid <- expand.grid( n.trees = seq(10,400,20), interaction.depth = c(2), shrinkage = seq(0.1), n.minobsinnode = seq(10,10,10))
 
 cl <- makeCluster(3, type = "SOCK")
 registerDoSNOW(cl)

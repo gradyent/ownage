@@ -5,11 +5,17 @@ library(caret)
 library(caretEnsemble)
 library(doSNOW)
 
-DataSet <- read.csv("Data//1. MOdelling challenge//trainingset.csv")
+df_tycoon <- read.csv("Data//1. Modelling challenge//trainingset.csv")
+df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
 
-trainData <- DataSet[,c(5,8:38)]
 
-trainData$coast_length[ is.na(trainData$coast_length)] = 0
+test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
+df_train <- filter(df_tycoon, !typhoon_name==test_tycoon)
+df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
+
+df_test<- df_test[,c(5,8:38)]
+df_train<- df_train[,c(5,8:38)]
+
 
 
 folds=5
@@ -18,7 +24,7 @@ myControl <- trainControl(method='cv', number=folds, repeats=repeats,
                           returnResamp='none',
                           savePredictions=TRUE, 
                           verboseIter=TRUE,
-                          index=createMultiFolds(trainData$comp_damage_houses, k=folds, times=repeats))
+                          index=createMultiFolds(df_train$comp_damage_houses, k=folds, times=repeats))
 PP <- c('center', 'scale')
 
 cl <- makeCluster(10, type = "SOCK")
@@ -26,7 +32,7 @@ cl <- makeCluster(10, type = "SOCK")
 registerDoSNOW(cl)
 
 #Train some models
-all.models <- caretList(trainData[-1], trainData$comp_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
+all.models <- caretList(df_train[-1], df_train$comp_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
   model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=300, .interaction.depth=2, .shrinkage = 0.01, .n.minobsinnode = c(10)))
   # model2 <- caretModelSpec( method='blackboost')#,
   # model3 <- caretModelSpec( method='parRF'),
@@ -42,10 +48,6 @@ all.models <- caretList(trainData[-1], trainData$comp_damage_houses,metric = "Rs
 names(all.models) <- sapply(all.models, function(x) x$method)
 sort(sapply(all.models, function(x) min(x$results$Rsquared)))
 
-#Make a greedy ensemble - currently can only use RMSE
-greedy <- caretEnsemble(all.models, iter=1000L)
-sort(greedy$weights, decreasing=TRUE)
-greedy$error
 
 #Make a linear regression ensemble
 linear <- caretStack(all.models, method='glm', trControl=trainControl(method='cv'))
@@ -53,4 +55,10 @@ linear$error
 
 
 stopCluster(cl)
+
+predicted <- predict(linear, newdata = df_test)
+
+plot(df_test$comp_damage_houses, predicted)
+cor(df_test$comp_damage_houses, predicted)
+
 
