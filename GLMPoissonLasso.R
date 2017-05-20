@@ -1,26 +1,28 @@
 
 # Test
 rm(list = ls())
-
+library(glmmLasso); library(dplyr)
+library(MASS);library(nlme)
 df_tycoon <- read.csv("Data//1. Modelling challenge//trainingset.csv")
+df_tycoon_test <- read.csv("Data//1. Modelling challenge//testset.csv")
+
+df_scale <- df_tycoon[,5:36]
+df_scale <- scale(df_scale,center=T,scale=T)
+scaleList <- list(scale = attr(df_scale, "scaled:scale"),
+                  center = attr(df_scale, "scaled:center"))
+scars <- as.data.frame(scaleList)
+
+df_tycoon <- rbind(df_tycoon, df_tycoon_test)
 df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
 df_tycoon$n_households <- log(df_tycoon$n_households) # log transformation
 df_tycoon <- select(df_tycoon, -x_pos, -y_pos)
+df_tycoon[,8:36]<-scale(df_tycoon[,8:36],center=T,scale=T)
 
-df_scale <- scale(df_tycoon[,5:36],center=T,scale=T)
-scaleList <- list(scale = attr(df_scale, "scaled:scale"),
-                  center = attr(df_scale, "scaled:center"))
-
-scars <- as.data.frame(scaleList)
-
-# usp <- predicted * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
-
-library(glmmLasso); library(dplyr)
-library(MASS);library(nlme)
+df_tycoon_test <- filter(df_tycoon, is.na(df_tycoon$comp_damage_houses))
+df_train <- filter(df_tycoon, !is.na(df_tycoon$comp_damage_houses))
 
 # test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
-df_tycoon[,5:36]<-scale(df_tycoon[,5:36],center=T,scale=T)
-df_train <- df_tycoon
+df_train[,5:7]<-scale(df_train[,5:7],center=T,scale=T)
 # df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
 
 ### Model for completely destroyed:
@@ -38,7 +40,7 @@ family = poisson(link = log)
 ## shrinked to zero;
 
 ## Using BIC (or AIC, respectively) to determine the optimal tuning parameter lambda
-lambda <- seq(200,100,by=-1)
+lambda <- seq(250,100,by=-1)
 
 BIC_vec<-rep(Inf,length(lambda))
 family = poisson(link = log)
@@ -51,7 +53,7 @@ n <- colnames(df_train_comp)
 v_exclude <- c("typhoon_name","admin_L3_code","admin_L2_code","comp_damage_houses")
 glm_form <- as.formula(paste("comp_damage_houses~", paste(n[!n %in% v_exclude], collapse="+")))
 
-cor1 <- numeric(length(lambda))
+# cor1 <- numeric(length(lambda))
 
 for(j in 1:length(lambda)){
   print(paste("Iteration ", j,sep=""))
@@ -65,28 +67,40 @@ for(j in 1:length(lambda)){
   BIC_vec[j]<-glm3$bic
   Delta.start<-rbind(Delta.start,glm3$Deltamatrix[glm3$conv.step,])
   Q.start<-c(Q.start,glm3$Q_long[[glm3$conv.step+1]])
-  predicted_test <- predict(glm3, newdata = df_test)
-  cor1[j] <- cor(df_test$comp_damage_houses, predicted_test)
+  #predicted_test <- predict(glm3, newdata = df_test)
+  #cor1[j] <- cor(df_test$comp_damage_houses, predicted_test)
 }
 
-plot(lambda, cor1, type="l")
+# plot(lambda, cor1, type="l")
 plot(lambda, BIC_vec)
 opt3<-which.min(BIC_vec)
 lambda[opt3]
 
 glm3_final <- glmmLasso(glm_form, rnd = list(typhoon_name=~1),  
-                        family = family, data = df_train_comp, lambda=lambda[opt3])
+                         family = family, data = df_train_comp, lambda=lambda[opt3])
+
+df_tycoon_test <- select(df_tycoon_test, -admin_L3_name, -part_damage_houses, -total_damage_houses)
 
 summary(glm3_final)
 
-predicted_test <- predict(glm3_final, newdata = df_test)
-predicted_train <- predict(glm3_final, newdata = df_train)
+df_tycoon_test$comp_damage_houses[is.na(df_tycoon_test$comp_damage_houses)] <- 0
+
+predicted_test <- predict(glm3_final, newdata = df_tycoon_test)
+predicted_train <- predict(glm3_final, newdata = df_train_comp)
 
 plot(df_test$comp_damage_houses, predicted_test)
 cor(df_test$comp_damage_houses, predicted_test)
 
 plot(df_train$comp_damage_houses, predicted_train)
 cor(df_train$comp_damage_houses, predicted_train)
+
+Final_predict <- predicted_test * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
+
+saveRDS(Final_predict, "Pred_Comp.Rdata")
+
+###############################################################################################################
+###############################################################################################################
+###############################################################################################################
 
 ## plot coefficient paths
 par(mar=c(6,6,4,4))
@@ -143,8 +157,3 @@ library(MASS);library(nlme)
 
 test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
 df_tycoon2 <- scale(df_tycoon[,5:36],center=T,scale=T)
-
-> scars <- as.data.frame(scaleList)
-> usp <- sp * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
-Error: object 'sp' not found
-> usp <- predicted_test * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
