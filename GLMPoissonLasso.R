@@ -7,6 +7,14 @@ df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
 df_tycoon$n_households <- log(df_tycoon$n_households) # log transformation
 df_tycoon <- select(df_tycoon, -x_pos, -y_pos)
 
+df_scale <- scale(df_tycoon[,5:36],center=T,scale=T)
+scaleList <- list(scale = attr(df_scale, "scaled:scale"),
+                  center = attr(df_scale, "scaled:center"))
+
+scars <- as.data.frame(scaleList)
+
+# usp <- predicted * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
+
 library(glmmLasso); library(dplyr)
 library(MASS);library(nlme)
 
@@ -30,7 +38,7 @@ family = poisson(link = log)
 ## shrinked to zero;
 
 ## Using BIC (or AIC, respectively) to determine the optimal tuning parameter lambda
-  lambda <- seq(100,0,by=-1)
+lambda <- seq(200,100,by=-1)
 
 BIC_vec<-rep(Inf,length(lambda))
 family = poisson(link = log)
@@ -49,9 +57,9 @@ for(j in 1:length(lambda)){
   print(paste("Iteration ", j,sep=""))
   
   glm3 <- try(glmmLasso(glm_form,rnd = list(typhoon_name=~1), 
-                    family = family, data = df_train_comp, 
-                    lambda=lambda[j], switch.NR=T,final.re=T,
-                    control=list(start=Delta.start[j,],q_start=Q.start[j])), silent=TRUE)
+                        family = family, data = df_train_comp, 
+                        lambda=lambda[j], switch.NR=T,final.re=T,
+                        control=list(start=Delta.start[j,],q_start=Q.start[j])), silent=TRUE)
   
   print(colnames(glm3$Deltamatrix)[2:7][glm3$Deltamatrix[glm3$conv.step,2:7]!=0])
   BIC_vec[j]<-glm3$bic
@@ -67,7 +75,7 @@ opt3<-which.min(BIC_vec)
 lambda[opt3]
 
 glm3_final <- glmmLasso(glm_form, rnd = list(typhoon_name=~1),  
-                       family = family, data = df_train_comp, lambda=150)
+                        family = family, data = df_train_comp, lambda=lambda[opt3])
 
 summary(glm3_final)
 
@@ -89,3 +97,54 @@ for(i in 3:36){
 }
 abline(v=lambda[opt3],lty=2)
 
+# Fit glm with selected features
+selected_features <- names(which(coef(glm3_final) != 0))[-1]
+
+glm_form2 <- as.formula(paste("comp_damage_houses~", paste(selected_features, collapse="+")))
+
+glm3_final2 <- glmmLasso(glm_form2, rnd = list(typhoon_name=~1),  
+                         family = family, data = df_train_comp, lambda=0)
+
+predicted_test2 <- predict(glm3_final2, newdata = df_test)
+predicted_train2 <- predict(glm3_final2, newdata = df_train)
+
+plot(df_test$comp_damage_houses, predicted_test2)
+cor(df_test$comp_damage_houses, predicted_test2)
+
+plot(df_train$comp_damage_houses, predicted_train2)
+cor(df_train$comp_damage_houses, predicted_train2)
+
+round(unscale(predicted_test, df_tycoon[,5:36]))
+
+# Scale cars data:
+scars <- scale(cars)
+# Save scaled attibutes:
+
+# scars is a matrix, make it a data frame like cars for modeling:
+scars <- as.data.frame(scaleList) 
+smod <- lm(speed ~ dist, data = scaleList)
+# Predictions on scaled data:
+sp <- predict(smod, scars)
+# Fit the same model to the original cars data:
+omod <- lm(speed ~ dist, data = cars)
+op <- predict(omod, cars)
+# Convert scaled prediction to original data scale:
+
+# Compare predictions:
+all.equal(op, usp)
+
+df_tycoon <- read.csv("Data//1. Modelling challenge//trainingset.csv")
+df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
+df_tycoon$n_households <- log(df_tycoon$n_households) # log transformation
+df_tycoon <- select(df_tycoon, -x_pos, -y_pos)
+
+library(glmmLasso); library(dplyr)
+library(MASS);library(nlme)
+
+test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
+df_tycoon2 <- scale(df_tycoon[,5:36],center=T,scale=T)
+
+> scars <- as.data.frame(scaleList)
+> usp <- sp * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
+Error: object 'sp' not found
+> usp <- predicted_test * scaleList$scale["comp_damage_houses"] + scaleList$center["comp_damage_houses"]
