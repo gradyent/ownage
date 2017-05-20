@@ -17,7 +17,7 @@ fitControl <- trainControl(method = "cv",
                            number = 5
 )
 
-Grid <- expand.grid( n.trees = seq(10,1000,10), interaction.depth = c(8), shrinkage = seq(0.1), n.minobsinnode = seq(10,10,10))
+Grid <- expand.grid( n.trees = seq(10,1000,10), interaction.depth = c(8,20,30), shrinkage = seq(0.1), n.minobsinnode = seq(10,10,10))
 
 cl <- makeCluster(3, type = "SOCK")
 registerDoSNOW(cl)
