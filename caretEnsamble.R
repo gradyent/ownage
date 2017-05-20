@@ -14,14 +14,14 @@ df_tycoonTest <- read.csv("Data//1. Modelling challenge//testset.csv")
 df_tycoonTest$coast_length[is.na(df_tycoonTest$coast_length)] <- 0
 
 #test_tycoon <- as.character(unique(df_tycoon$typhoon_name)[1])
-# df_train <- filter(df_tycoon, !typhoon_name==test_tycoon)
-# df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
+#df_train <- filter(df_tycoon, !typhoon_name==test_tycoon)
+#df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
 df_train <- df_tycoon
 df_test <- df_tycoonTest
 
 
-df_test<- df_test[,c(5,8:38)]
-df_train<- df_train[,c(5,8:38)]
+df_test<- df_test[,c(6,8:38)]
+df_train<- df_train[,c(6,8:38)]
 
 folds=10
 repeats=2
@@ -29,7 +29,7 @@ myControl <- trainControl(method='cv', number=folds, repeats=repeats,
                           returnResamp='final',
                           savePredictions=TRUE, 
                           verboseIter=TRUE,
-                          index=createMultiFolds(df_train$comp_damage_houses, k=folds, times=repeats))
+                          index=createMultiFolds(df_train$part_damage_houses, k=folds, times=repeats))
 PP <- c('center', 'scale')
 
 cl <- makeCluster(16, type = "SOCK")
@@ -37,7 +37,7 @@ cl <- makeCluster(16, type = "SOCK")
 registerDoSNOW(cl)
 
 #Train some models
-all.models <- caretList(df_train[-1], df_train$comp_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
+all.models <- caretList(df_train[-1], df_train$part_damage_houses,metric = "Rsquared", trControl=myControl, tuneList=list(
   model1 <- caretModelSpec(method='gbm',tuneGrid=expand.grid(.n.trees=300, .interaction.depth=2, .shrinkage = 0.01, .n.minobsinnode = c(10))),
   model2 <- caretModelSpec( method='blackboost'),
   model3 <- caretModelSpec( method='parRF'),
@@ -69,7 +69,7 @@ model_preds <- data.frame(model_preds)
 
 predicted <- predict(greedy_ensemble, newdata = df_test)
 
-plot(df_test$comp_damage_houses, predicted)
-cor(df_test$comp_damage_houses, predicted)
+plot(df_test$part_damage_houses, predicted)
+cor(df_test$part_damage_houses, predicted)
 
 
