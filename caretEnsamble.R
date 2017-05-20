@@ -47,10 +47,18 @@ all.models <- caretList(df_train[-1], df_train$comp_damage_houses,metric = "Rsqu
 names(all.models) <- sapply(all.models, function(x) x$method)
 sort(sapply(all.models, function(x) min(x$results$Rsquared)))
 
+greedy_ensemble <- caretEnsemble(
+  model_list, 
+  metric="Rsquared",
+  trControl=trainControl(
+    number=2
+  ))
+summary(greedy_ensemble)
+
 
 stopCluster(cl)
 
-predicted <- predict(linear, newdata = df_test)
+predicted <- predict(greedy_ensemble, newdata = df_test)
 
 plot(df_test$comp_damage_houses, predicted)
 cor(df_test$comp_damage_houses, predicted)
