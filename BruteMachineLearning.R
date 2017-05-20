@@ -1,5 +1,36 @@
 # starting
 rm(list=ls())
 
-DataSet <- read.table("Data/1. Modelling challenge/trainingset.csv", sep = ",", header = TRUE)
+library(caret)
+library(devtools)
+library(caretEnsemble)
+library(doSNOW)
+
+DataSet <- read.csv("Data//1. MOdelling challenge//trainingset.csv")
+
+trainData <- DataSet[,c(5,8:38)]
+
+
+fitControl <- trainControl(method = "cv",
+                           number = 5,
+                           classProbs=TRUE
+)
+
+Grid <- expand.grid( n.trees = seq(10), interaction.depth = c(2), shrinkage = seq(0.1), n.minobsinnode = seq(10,10,10))
+
+cl <- makeCluster(3, type = "SOCK")
+registerDoSNOW(cl)
+
+model <- train(cuisine~., data = trainData,
+               trControl = fitControl,
+               method = "gbm",
+               verbose = FALSE,
+               tuneGrid = Grid,
+               metric = "ROC"
+)
+
+stopCluster(cl)
+
+plot(model)
+
 
