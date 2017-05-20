@@ -5,6 +5,7 @@ library(caret)
 library(caretEnsemble)
 library(doSNOW)
 library(dplyr)
+library(caTools)
 
 df_tycoon <- read.csv("Data//1. Modelling challenge//trainingset.csv")
 df_tycoon$coast_length[is.na(df_tycoon$coast_length)] <- 0
@@ -17,8 +18,8 @@ df_test <- filter(df_tycoon, typhoon_name==test_tycoon)
 df_test<- df_test[,c(5,8:38)]
 df_train<- df_train[,c(5,8:38)]
 
-folds=5
-repeats=1
+folds=10
+repeats=2
 myControl <- trainControl(method='cv', number=folds, repeats=repeats, 
                           returnResamp='final',
                           savePredictions=TRUE, 
@@ -39,7 +40,7 @@ all.models <- caretList(df_train[-1], df_train$comp_damage_houses,metric = "Rsqu
   model6 <- caretModelSpec( method='earth', preProcess=PP),
   model7 <- caretModelSpec( method='glm',  preProcess=PP),
   model8 <- caretModelSpec( method='svmRadial', preProcess=PP),
- # model9 <- caretModelSpec( method='gam', preProcess=PP)
+  #model9 <- caretModelSpec( method='gam', preProcess=PP)
   model10 <- caretModelSpec( method='glmnet', preProcess=PP)
 ))
 
@@ -48,15 +49,22 @@ names(all.models) <- sapply(all.models, function(x) x$method)
 sort(sapply(all.models, function(x) min(x$results$Rsquared)))
 
 greedy_ensemble <- caretEnsemble(
-  model_list, 
+  all.models, 
   metric="Rsquared",
   trControl=trainControl(
-    number=2
+    number=2,
+    classProbs = F
   ))
 summary(greedy_ensemble)
 
 
 stopCluster(cl)
+
+
+model_preds <- lapply(all.models, predict, newdata=df_test, type="raw")
+model_preds <- lapply(model_preds, function(x) x[,"M"])
+model_preds <- data.frame(model_preds)
+
 
 predicted <- predict(greedy_ensemble, newdata = df_test)
 
